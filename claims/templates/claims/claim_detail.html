@@ -1,0 +1,357 @@
+{% extends "claims/base.html" %}
+
+{% block title %}Claim Detail | EMRTS Claim Entry Portal{% endblock %}
+
+{% block content %}
+<style>
+    .detail-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+        margin-bottom: 22px;
+    }
+
+    .detail-section {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 18px;
+        background: #ffffff;
+        margin-bottom: 20px;
+    }
+
+    .detail-section h3 {
+        margin: 0 0 14px;
+        color: var(--primary);
+        font-size: 18px;
+    }
+
+    .field-row {
+        margin-bottom: 8px;
+    }
+
+    .field-label {
+        font-weight: 700;
+        color: var(--muted);
+        display: inline-block;
+        min-width: 160px;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+    }
+
+    th,
+    td {
+        padding: 10px;
+        border-bottom: 1px solid var(--border);
+        text-align: left;
+        vertical-align: top;
+    }
+
+    th {
+        color: var(--muted);
+        font-weight: 700;
+    }
+
+    .status-pill {
+        display: inline-block;
+        padding: 4px 9px;
+        border-radius: 999px;
+        background: #eef4fb;
+        color: var(--primary);
+        font-weight: 700;
+        font-size: 12px;
+        white-space: nowrap;
+    }
+
+    .reference-match {
+        background: #e8f5ee;
+        color: var(--success);
+    }
+
+    .reference-unmatched {
+        background: #fff7e6;
+        color: var(--warning);
+    }
+
+    .table-wrap {
+        overflow-x: auto;
+    }
+
+    .actions {
+        margin-top: 22px;
+        display: flex;
+        gap: 14px;
+        align-items: center;
+    }
+</style>
+
+<div class="card">
+    <h2 class="page-title">Claim Detail</h2>
+    <p class="page-subtitle">
+        Captured CMS-1500 claim information for development review.
+    </p>
+
+    <div class="detail-section">
+        <h3>Claim Summary</h3>
+        <div class="detail-grid">
+            <div class="field-row">
+                <span class="field-label">Claim Number:</span>
+                {{ claim.claim_number|default:claim.id }}
+            </div>
+            <div class="field-row">
+                <span class="field-label">Status:</span>
+                <span class="status-pill">{{ claim.get_status_display }}</span>
+            </div>
+            <div class="field-row">
+                <span class="field-label">Validation Status:</span>
+                {% if claim.validation_status == "reference_validated" %}
+                    <span class="status-pill reference-match">Reference validated</span>
+                {% else %}
+                    {{ claim.validation_status|default:"-" }}
+                {% endif %}
+            </div>
+            <div class="field-row">
+                <span class="field-label">Total Charge:</span>
+                ${{ claim.total_charge_amount }}
+            </div>
+            <div class="field-row">
+                <span class="field-label">Service Start:</span>
+                {{ claim.service_start_date|default:"-" }}
+            </div>
+            <div class="field-row">
+                <span class="field-label">Service End:</span>
+                {{ claim.service_end_date|default:"-" }}
+            </div>
+        </div>
+
+        {% if claim.validation_message %}
+            <p class="muted">{{ claim.validation_message }}</p>
+        {% endif %}
+    </div>
+
+    <div class="detail-section">
+        <h3>Patient Information</h3>
+        <div class="detail-grid">
+            <div class="field-row"><span class="field-label">Name:</span>{{ claim.patient }}</div>
+            <div class="field-row"><span class="field-label">Date of Birth:</span>{{ claim.patient.date_of_birth|default:"-" }}</div>
+            <div class="field-row"><span class="field-label">Sex:</span>{{ claim.patient.sex|default:"-" }}</div>
+            <div class="field-row"><span class="field-label">Phone:</span>{{ claim.patient.phone_number|default:"-" }}</div>
+            <div class="field-row"><span class="field-label">City:</span>{{ claim.patient.city|default:"-" }}</div>
+            <div class="field-row"><span class="field-label">State:</span>{{ claim.patient.state|default:"-" }}</div>
+            <div class="field-row"><span class="field-label">ZIP:</span>{{ claim.patient.zip_code|default:"-" }}</div>
+        </div>
+    </div>
+
+    <div class="detail-section">
+        <h3>Coverage / Policy Information</h3>
+        {% if claim.coverages.all %}
+            <div class="table-wrap"><table>
+                <thead>
+                    <tr>
+                        <th>Sequence</th>
+                        <th>Insured / Subscriber</th>
+                        <th>Relationship</th>
+                        <th>Payer</th>
+                        <th>Payer Mailing Address</th>
+                        <th>Policy Type</th>
+                        <th>Member ID</th>
+                        <th>Group Number</th>
+                        <th>Plan Name</th>
+                        <th>Authorization</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for coverage in claim.coverages.all %}
+                        <tr>
+                            <td>{{ coverage.get_payer_sequence_display }}</td>
+                            <td>{{ coverage.insurance_policy.insured_party }}</td>
+                            <td>{{ coverage.relationship_to_patient|default:"-" }}</td>
+                            <td>{{ coverage.insurance_policy.payer.payer_name }}</td>
+                            <td>
+                                {{ coverage.insurance_policy.payer.address_line_1|default:"-" }}
+                                {% if coverage.insurance_policy.payer.address_line_2 %}<br>{{ coverage.insurance_policy.payer.address_line_2 }}{% endif %}
+                                <br>{{ coverage.insurance_policy.payer.city|default:"" }}{% if coverage.insurance_policy.payer.city and coverage.insurance_policy.payer.state %}, {% endif %}{{ coverage.insurance_policy.payer.state|default:"" }}
+                                {{ coverage.insurance_policy.payer.zip_code|default:"" }}{% if coverage.insurance_policy.payer.zip_code_extension %}-{{ coverage.insurance_policy.payer.zip_code_extension }}{% endif %}
+                            </td>
+                            <td>{{ coverage.insurance_policy.get_policy_type_display }}</td>
+                            <td>{{ coverage.insurance_policy.member_id|default:"-" }}</td>
+                            <td>{{ coverage.insurance_policy.group_number|default:"-" }}</td>
+                            <td>{{ coverage.insurance_policy.plan_name|default:"-" }}</td>
+                            <td>{{ coverage.prior_authorization_number|default:"-" }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table></div>
+        {% else %}
+            <p class="muted">No coverage or payer information recorded.</p>
+        {% endif %}
+    </div>
+
+    <div class="detail-section">
+        <h3>Providers</h3>
+        {% if claim.claim_providers.all %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Role</th>
+                        <th>Provider</th>
+                        <th>NPI</th>
+                        <th>Reference Status</th>
+                        <th>Taxonomy</th>
+                        <th>Location</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for claim_provider in claim.claim_providers.all %}
+                        <tr>
+                            <td>{{ claim_provider.get_provider_role_display }}</td>
+                            <td>{{ claim_provider.provider }}</td>
+                            <td>{{ claim_provider.provider.npi|default:"-" }}</td>
+                            <td>
+                                {% if claim_provider.provider.npi_reference %}
+                                    <span class="status-pill reference-match">Reference matched</span>
+                                {% else %}
+                                    <span class="status-pill reference-unmatched">Not linked</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ claim_provider.provider.taxonomy_code|default:"-" }}</td>
+                            <td>
+                                {{ claim_provider.provider.city|default:"-" }}
+                                {{ claim_provider.provider.state|default:"" }}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="muted">No providers recorded.</p>
+        {% endif %}
+    </div>
+
+    <div class="detail-section">
+        <h3>Diagnosis Codes</h3>
+        {% if claim.diagnoses.all %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Order</th>
+                        <th>Diagnosis Code</th>
+                        <th>Description</th>
+                        <th>Reference Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for diagnosis in claim.diagnoses.all %}
+                        <tr>
+                            <td>{{ diagnosis.diagnosis_order }}</td>
+                            <td>{{ diagnosis.diagnosis_code }}</td>
+                            <td>{{ diagnosis.description|default:"-" }}</td>
+                            <td>
+                                {% if diagnosis.icd10_reference %}
+                                    <span class="status-pill reference-match">Reference matched</span>
+                                {% else %}
+                                    <span class="status-pill reference-unmatched">Not linked</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="muted">No diagnosis codes recorded.</p>
+        {% endif %}
+    </div>
+
+    <div class="detail-section">
+        <h3>Service Lines</h3>
+        {% if claim.service_lines.all %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>From</th>
+                        <th>To</th>
+                        <th>POS</th>
+                        <th>Procedure</th>
+                        <th>Reference Status</th>
+                        <th>Rendering Provider</th>
+                        <th>Modifiers</th>
+                        <th>Diagnosis Pointers</th>
+                        <th>Charge</th>
+                        <th>Units</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for line in claim.service_lines.all %}
+                        <tr>
+                            <td>{{ line.service_from_date|default:"-" }}</td>
+                            <td>{{ line.service_to_date|default:"-" }}</td>
+                            <td>{{ line.place_of_service|default:"-" }}</td>
+                            <td>{{ line.procedure_code }}</td>
+                            <td>
+                                {% if line.procedure_reference %}
+                                    <span class="status-pill reference-match">Reference matched</span>
+                                {% else %}
+                                    <span class="status-pill reference-unmatched">Not linked</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ line.rendering_provider|default:"-" }}</td>
+                            <td>
+                                {{ line.modifier_1 }}
+                                {{ line.modifier_2 }}
+                                {{ line.modifier_3 }}
+                                {{ line.modifier_4 }}
+                            </td>
+                            <td>
+                                {{ line.diagnosis_pointer_1|default:"" }}
+                                {{ line.diagnosis_pointer_2|default:"" }}
+                                {{ line.diagnosis_pointer_3|default:"" }}
+                                {{ line.diagnosis_pointer_4|default:"" }}
+                            </td>
+                            <td>${{ line.charge_amount }}</td>
+                            <td>{{ line.units }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="muted">No service lines recorded.</p>
+        {% endif %}
+    </div>
+
+    <div class="detail-section">
+        <h3>Audit Events</h3>
+        {% if claim.audit_events.all %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Event Type</th>
+                        <th>Description</th>
+                        <th>Changed By</th>
+                        <th>Created</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for event in claim.audit_events.all %}
+                        <tr>
+                            <td>{{ event.event_type }}</td>
+                            <td>{{ event.event_description|default:"-" }}</td>
+                            <td>{{ event.changed_by|default:"-" }}</td>
+                            <td>{{ event.created_at|date:"Y-m-d H:i" }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="muted">No audit events recorded.</p>
+        {% endif %}
+    </div>
+
+    <div class="actions">
+        <a href="{% url 'claims:capture_claim' %}" class="button">Capture Another Claim</a>
+        <a href="{% url 'claims:dashboard' %}" class="muted">Back to Dashboard</a>
+    </div>
+</div>
+{% endblock %}

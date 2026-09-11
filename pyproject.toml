@@ -1,0 +1,23 @@
+[project]
+name = "emr-claim-entry-portal"
+version = "0.1.0"
+description = "Electronic Claim Entry and Submission Portal for CMS-1500 claim capture."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "django>=5.0,<6.0",
+    "psycopg[binary]>=3.2,<4.0",
+    "python-dotenv>=1.0,<2.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0,<9.0",
+    "pytest-django>=4.8,<5.0",
+]
+
+[tool.uv]
+package = false
+
+[tool.vercel.scripts]
+build = 'if [ -n "$DATABASE_URL" ]; then python manage.py migrate --noinput && python manage.py seed_sample_claims; else echo "DATABASE_URL is required for Vercel deployments." >&2; exit 1; fi'
